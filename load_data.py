@@ -57,9 +57,10 @@ def build_dataset():
 	lines = fp.readlines()
 	fp.close()
 
+	testId = [int(line[:-1]) for line in lines]
 	testX = [node_emb[int(line[:-1])] for line in lines]
 
-	return trainX, trainY, testX
+	return trainX, trainY, testId, testX
 
 if __name__ == '__main__':
 	trainX, trainY, testX = build_dataset()
