@@ -1,5 +1,5 @@
 /manlab-network-embedding1/
-
+embedding2/data/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -123,3 +123,69 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# User-specific stuff
+embedding2/.idea/**/workspace.xml
+embedding2/.idea/**/tasks.xml
+embedding2/.idea/**/usage.statistics.xml
+embedding2/.idea/**/dictionaries
+embedding2/.idea/**/shelf
+
+# Generated files
+embedding2/.idea/**/contentModel.xml
+
+# Sensitive or high-churn files
+embedding2/.idea/**/dataSources/
+embedding2/.idea/**/dataSources.ids
+embedding2/.idea/**/dataSources.local.xml
+embedding2/.idea/**/sqlDataSources.xml
+embedding2/.idea/**/dynamic.xml
+embedding2/.idea/**/uiDesigner.xml
+embedding2/.idea/**/dbnavigator.xml
+
+# Gradle
+embedding2/.idea/**/gradle.xml
+embedding2/.idea/**/libraries
+
+# Gradle and Maven with auto-import
+# When using Gradle or Maven with auto-import, you should exclude module files,
+# since they will be recreated, and may cause churn.  Uncomment if using
+# auto-import.
+embedding2/# .idea/modules.xml
+embedding2/# .idea/*.iml
+embedding2/# .idea/modules
+# *.iml
+# *.ipr
+
+# CMake
+cmake-build-*/
+
+# Mongo Explorer plugin
+embedding2/.idea/**/mongoSettings.xml
+
+# File-based project format
+*.iws
+
+# IntelliJ
+out/
+
+# mpeltonen/sbt-idea plugin
+embedding2/.idea_modules/
+
+# JIRA plugin
+atlassian-ide-plugin.xml
+
+# Cursive Clojure plugin
+embedding2/.idea/replstate.xml
+
+# Crashlytics plugin (for Android Studio and IntelliJ)
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Editor-based Rest Client
+embedding2/.idea/httpRequests
+
+# Android studio 3.1+ serialized cache file
+embedding2/.idea/caches/build_file_checksums.ser
