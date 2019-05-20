@@ -9,7 +9,7 @@ train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
 emb_path = '../data/facebook.emb'
 vertices = set()
-test_edges = set()
+test_edges = []
 train_edges = set()
 maxv = 0
 emb = {}
@@ -66,8 +66,7 @@ def read():
                 continue
             ab = line.split(',')
             a, b = int(ab[0]), int(ab[1])
-            a, b = min(a, b), max(a, b)
-            test_edges.add((a, b))
+            test_edges.append((a, b))
     return conj_matr
 
 
@@ -207,14 +206,14 @@ def thread_predict(conj, fn, func):
 # svm concatenate 2 vecs: 0.876688
 # svm concatenate 2 vecs and symmtry: 0.8861, 0.883192, 0.893224(5k*2) 0.8735, 0.88092, 0.8852(2w*2)
 # svm abs(a-b): 0.846652, 0.853272(1w samples), 0.85114(5k samples)
-
+# svm 2k samples. linear 0.8347, poly(5) 0.83142 sigmoid 0.87
 
 if __name__ == '__main__':
     # conj_mtrx = read4local_test(1000)
     conj_mtrx = read()
     v_num, dim, emb = load_emb(emb_path)
     print('data read')
-    svc = SVC(C=1.0, kernel='rbf', degree=3, gamma='auto', coef0=0.0, shrinking=True,
+    svc = SVC(C=2.5, kernel='sigmoid', degree=5, gamma='auto', coef0=0.5, shrinking=True,
               probability=False, tol=0.001, cache_size=200, class_weight=None,
               verbose=False, max_iter=-1, decision_function_shape='ovr',
               random_state=None)
@@ -232,13 +231,14 @@ if __name__ == '__main__':
     # test_ps, test_ns = provide_sample(conj_mtrx, test_edges, test_num // 2)
     # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
     #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
-    # test_Xs = np.array([np.abs(emb[p[0]] - emb[p[1]]) for p in test_ps] +
-    #                    [np.abs(emb[n[0]] - emb[n[1]]) for n in test_ns])
+    # # test_Xs = np.array([np.abs(emb[p[0]] - emb[p[1]]) for p in test_ps] +
+    # #                    [np.abs(emb[n[0]] - emb[n[1]]) for n in test_ns])
     # scores = svc.decision_function(test_Xs)
     # calc_auc(scores[:test_num // 2], scores[test_num // 2:])
-    testlist = list(test_edges)
-    test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
 
+    testlist = test_edges
+    test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
+    predict_all('../result/facebook_svm_sig.csv', svc.decision_function, test_Xs, testlist)
 
     # predict(conj_mtrx, '../result/naive_test.res', nbr_score)
 
