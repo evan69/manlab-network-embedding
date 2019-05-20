@@ -40,11 +40,11 @@ def load_label(filename):
 
 	return node_label
 
-def build_dataset():
+def build_dataset(emb_file):
 	dir = "./manlab-network-embedding1/"
 	train_file = "airport_train"
 	test_file = "airport_test"
-	emb_file = "struc2vec.emb"
+	# emb_file = "struc2vec.emb"
 
 	node_n, demen, node_emb = load_emb(dir + emb_file)
 	train_label = load_label(dir + train_file)
