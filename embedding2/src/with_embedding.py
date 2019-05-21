@@ -7,11 +7,18 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LinearRegression
 
 
-local_test = True
+local_test = False
+test_num = 10000
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
-emb_path = '../data/facebook_struct2vec.emb'
-predict_path = '../result/facebook_5.21.csv'
+emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
+# emb_path = '../data/facebook_node2vec_default.emb'
+# emb_path = '../data/facebook_deepwalk_20_160_4_5_3.emb'
+# emb_path = '../data/facebook_deepwalk_default.emb'
+
+
+predict_path = '../result/facebook_5.21_node2vec_20_160_0.25_4_4_5_3.csv'
+
 vertices = set()
 test_edges = set()
 train_edges = set()
@@ -70,7 +77,7 @@ def read():
                 continue
             ab = line.split(',')
             a, b = int(ab[0]), int(ab[1])
-            a, b = min(a, b), max(a, b)
+            # a, b = min(a, b), max(a, b)
             test_edges.add((a, b))
     return conj_matr
 
@@ -140,7 +147,9 @@ def calc_auc(p_scores, n_scores):
             elif p_score > n_score:
                 pstv_gth_ngtv += 1
     # print(pstv_gth_ngtv)
-    print('AUC is', pstv_gth_ngtv / len(p_scores) / len(n_scores))
+    auc = pstv_gth_ngtv / len(p_scores) / len(n_scores)
+    print('AUC is', auc)
+    return auc
 
 
 def test_local(score_func):
@@ -207,58 +216,75 @@ def thread_predict(conj, fn, func):  # fn = filename
         t.join()
 
 
+def return_itself(x):
+    return x
+
 
 if __name__ == '__main__':
     # 【读入edge_list和embedding表】
     if local_test is True:
-        conj_mtrx = read4local_test(1000)  # 用于本地调试
-        print('local test data read')
+        pass
+        # conj_mtrx = read4local_test(test_num)  # 用于本地调试
+        # print('local test data read')
     else:
         conj_mtrx = read()  # 用于输出最后的预测结果
         print('online test data read')
-    print('len(train_edges) =', len(train_edges))
     v_num, emb_dim, emb = load_emb(emb_path)
     print('embedding info: node_num =', v_num, ' embedding_dim =', emb_dim)
 
+    score_func = return_itself
     # 【训练分类器模型】
-    print('start training the model...')
-
-    model = LinearRegression()
-
-    sample_num = len(train_edges) * 4
-    ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 4)
-    xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
-          [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
-    Xs = np.array(xsl)
-    print("Xs.shape:", Xs.shape)
-
-    ys = np.concatenate([np.ones(sample_num // 2), np.zeros(sample_num // 2)])
-
-    rand_ind = np.arange(sample_num)
-    random.shuffle(rand_ind)
-    Xs = Xs[rand_ind]
-    ys = ys[rand_ind]
-
-    model.fit(Xs, ys)
-    print('model trained')
-
-    score_func = model.predict
+    # print('len(train_edges) =', len(train_edges))
+    # print('len(test_edges) =', len(test_edges))
+    # print('start training the model...')
+    #
+    # model = LinearRegression()
+    #
+    # sample_num = 20000
+    # ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 4)
+    # xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
+    #       [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
+    # Xs = np.array(xsl)
+    # print("Xs.shape:", Xs.shape)
+    #
+    # ys = np.concatenate([np.ones(sample_num // 2), np.zeros(sample_num // 2)])
+    #
+    # rand_ind = np.arange(sample_num)
+    # random.shuffle(rand_ind)
+    # Xs = Xs[rand_ind]
+    # ys = ys[rand_ind]
+    #
+    # model.fit(Xs, ys)
+    # print('model trained')
+    #
+    # score_func = model.predict
 
     # 【本地调试 或 预测结果输出】
     if local_test is True:  # 在本地测试分类器效果（AUC）
+        auc_list = []
+        for i in range(10):
+            conj_mtrx = read4local_test(test_num)  # 用于本地调试
+            print('local test data read')
 
-        test_num = 1000
-        test_ps, test_ns = provide_sample(conj_mtrx, pstv_set=test_edges, ngtv_num=test_num // 2)
-        test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
-                           [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
+            test_ps, test_ns = provide_sample(conj_mtrx, pstv_set=test_edges, ngtv_num=test_num // 2)
+            testlist = test_ps + test_ns
+            test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+            # print(test_Xs)
+            # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
+            #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
 
-        scores = score_func(test_Xs)
+            scores = score_func(test_Xs)
 
-        calc_auc(scores[:test_num // 2], scores[test_num // 2:])
+            auc = calc_auc(scores[:test_num // 2], scores[test_num // 2:])
+            auc_list.append(auc)
+        auc_list = np.array(auc_list)
+        print("Average AUC (10 times, #test_edge="+str(test_num)+") =", np.average(auc_list))
 
     else:  # 输出对比赛测试集的预测结果
 
         testlist = test_edges
-        test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
-        predict_all('', score_func, test_Xs, testlist)
+        # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
+        test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+
+        predict_all(predict_path, score_func, test_Xs, testlist)
 
