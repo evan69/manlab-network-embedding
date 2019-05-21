@@ -44,7 +44,7 @@ def read():
     return conj_matr
 
 
-def read4local_test(pstv_num):
+def read4local_test(pstv_num):  # train_edges里的一部分用作test_edges，剩余的当train_edges
     global maxv, test_edges, train_edges
     edges = []
     with open(train_path) as f:
@@ -97,7 +97,7 @@ def provide_sample(conj, ngtv_num):
         b = random.randint(1, maxv)
         a, b = min(a, b), max(a, b)
         if conj[a, b] > 0:
-            i -= 1
+            i -= 1   # try once more
         else:
             nsample.append((a, b))
     return psample, nsample

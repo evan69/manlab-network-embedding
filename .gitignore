@@ -1,5 +1,7 @@
 /manlab-network-embedding1/
+embedding1/data/*
 embedding2/data/*
+.idea/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
