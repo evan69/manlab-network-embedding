@@ -10,7 +10,7 @@ from sklearn.linear_model import LinearRegression
 local_test = True
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
-emb_path = '../data/facebook.emb'
+emb_path = '../data/facebook_struct2vec.emb'
 predict_path = '../result/facebook_5.21.csv'
 vertices = set()
 test_edges = set()
@@ -139,7 +139,7 @@ def calc_auc(p_scores, n_scores):
                 pstv_gth_ngtv += 0.5
             elif p_score > n_score:
                 pstv_gth_ngtv += 1
-    print(pstv_gth_ngtv)
+    # print(pstv_gth_ngtv)
     print('AUC is', pstv_gth_ngtv / len(p_scores) / len(n_scores))
 
 
@@ -209,20 +209,23 @@ def thread_predict(conj, fn, func):  # fn = filename
 
 
 if __name__ == '__main__':
-    # 读入edge_list和embedding表
+    # 【读入edge_list和embedding表】
     if local_test is True:
         conj_mtrx = read4local_test(1000)  # 用于本地调试
         print('local test data read')
     else:
         conj_mtrx = read()  # 用于输出最后的预测结果
         print('online test data read')
+    print('len(train_edges) =', len(train_edges))
     v_num, emb_dim, emb = load_emb(emb_path)
+    print('embedding info: node_num =', v_num, ' embedding_dim =', emb_dim)
 
-    # 训练分类器模型
+    # 【训练分类器模型】
     print('start training the model...')
+
     model = LinearRegression()
 
-    sample_num = 5000
+    sample_num = len(train_edges) * 4
     ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 4)
     xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
           [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
@@ -241,6 +244,7 @@ if __name__ == '__main__':
 
     score_func = model.predict
 
+    # 【本地调试 或 预测结果输出】
     if local_test is True:  # 在本地测试分类器效果（AUC）
 
         test_num = 1000
