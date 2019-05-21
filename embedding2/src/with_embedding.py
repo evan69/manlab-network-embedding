@@ -4,20 +4,22 @@ import random
 import threading
 import datetime
 from sklearn.svm import SVC
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge
 
 
-local_test = False
+local_test = True   # 本地调试
+need_training = True   # 需要训练机器学习模型
 test_num = 10000
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
-emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
+# emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
+emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
 # emb_path = '../data/facebook_node2vec_default.emb'
 # emb_path = '../data/facebook_deepwalk_20_160_4_5_3.emb'
 # emb_path = '../data/facebook_deepwalk_default.emb'
 
 
-predict_path = '../result/facebook_5.21_node2vec_20_160_0.25_4_4_5_3.csv'
+predict_path = '../result/try.csv'
 
 vertices = set()
 test_edges = set()
@@ -222,63 +224,78 @@ def return_itself(x):
 
 if __name__ == '__main__':
     # 【读入edge_list和embedding表】
-    if local_test is True:
-        pass
-        # conj_mtrx = read4local_test(test_num)  # 用于本地调试
-        # print('local test data read')
-    else:
+    if not local_test:
         conj_mtrx = read()  # 用于输出最后的预测结果
         print('online test data read')
     v_num, emb_dim, emb = load_emb(emb_path)
     print('embedding info: node_num =', v_num, ' embedding_dim =', emb_dim)
 
-    score_func = return_itself
     # 【训练分类器模型】
-    # print('len(train_edges) =', len(train_edges))
-    # print('len(test_edges) =', len(test_edges))
-    # print('start training the model...')
-    #
-    # model = LinearRegression()
-    #
-    # sample_num = 20000
-    # ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 4)
-    # xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
-    #       [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
-    # Xs = np.array(xsl)
-    # print("Xs.shape:", Xs.shape)
-    #
-    # ys = np.concatenate([np.ones(sample_num // 2), np.zeros(sample_num // 2)])
-    #
-    # rand_ind = np.arange(sample_num)
-    # random.shuffle(rand_ind)
-    # Xs = Xs[rand_ind]
-    # ys = ys[rand_ind]
-    #
-    # model.fit(Xs, ys)
-    # print('model trained')
-    #
-    # score_func = model.predict
+    if local_test and need_training:
+        conj_mtrx = read4local_test(test_num)  # 用于本地调试
+        print('local test data read')
+        print('len(train_edges) =', len(train_edges))
+        print('len(test_edges) =', len(test_edges))
+        print('start training the model...')
+
+        model = LogisticRegression()
+        # model = BayesianRidge()
+
+        sample_num = 40000
+        ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 2)
+        # xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
+        #       [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
+        xsl = [np.multiply(emb[p[0]], emb[p[1]]) for p in ps] + [np.multiply(emb[n[0]], emb[n[1]]) for n in ns]
+        Xs = np.array(xsl)
+        print("Xs.shape:", Xs.shape)
+
+        ys = np.concatenate([np.ones(sample_num // 2), np.zeros(sample_num // 2)])
+
+        rand_ind = np.arange(sample_num)
+        random.shuffle(rand_ind)
+        Xs = Xs[rand_ind]
+        ys = ys[rand_ind]
+
+        model.fit(Xs, ys)
+        print('model trained')
+
+        score_func = model.decision_function
+    else:
+        score_func = return_itself
 
     # 【本地调试 或 预测结果输出】
-    if local_test is True:  # 在本地测试分类器效果（AUC）
-        auc_list = []
-        for i in range(10):
-            conj_mtrx = read4local_test(test_num)  # 用于本地调试
-            print('local test data read')
-
+    if local_test:  # 在本地测试分类器效果（AUC）
+        if need_training:
             test_ps, test_ns = provide_sample(conj_mtrx, pstv_set=test_edges, ngtv_num=test_num // 2)
             testlist = test_ps + test_ns
-            test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
-            # print(test_Xs)
             # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
             #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
+            test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in test_ps] +
+                               [np.multiply(emb[n[0]], emb[n[1]]) for n in test_ns])
 
             scores = score_func(test_Xs)
 
             auc = calc_auc(scores[:test_num // 2], scores[test_num // 2:])
-            auc_list.append(auc)
-        auc_list = np.array(auc_list)
-        print("Average AUC (10 times, #test_edge="+str(test_num)+") =", np.average(auc_list))
+
+        else:
+            auc_list = []
+            for i in range(10):
+                conj_mtrx = read4local_test(test_num)  # 用于本地调试
+                print('local test data read')
+
+                test_ps, test_ns = provide_sample(conj_mtrx, pstv_set=test_edges, ngtv_num=test_num // 2)
+                testlist = test_ps + test_ns
+                test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+                # print(test_Xs)
+                # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
+                #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
+
+                scores = score_func(test_Xs)
+
+                auc = calc_auc(scores[:test_num // 2], scores[test_num // 2:])
+                auc_list.append(auc)
+            auc_list = np.array(auc_list)
+            print("Average AUC (10 times, #test_edge="+str(test_num)+") =", np.average(auc_list))
 
     else:  # 输出对比赛测试集的预测结果
 
