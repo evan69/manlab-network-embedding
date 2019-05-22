@@ -31,17 +31,20 @@ if __name__ == "__main__":
 	gbdt_model = GradientBoostingClassifier()
 	# xgbc = XGBClassifier()
 	xgbc = XGBClassifier(#booster="gbliner",
+	                      n_jobs=10,
 	                      learning_rate=0.01,
 	                      n_estimators=500,         # 树的个数--1000棵树建立xgboost
 	                      max_depth=6,               # 树的深度
 	                      min_child_weight = 1,      # 叶子节点最小权重
 	                      gamma=0.,                  # 惩罚项中叶子结点个数前的参数
-	                      subsample=0.7,             # 随机选择80%样本建立决策树
-	                      colsample_btree=0.7,       # 随机选择80%特征建立决策树
+	                      subsample=0.75,             # 随机选择80%样本建立决策树
+	                      colsample_btree=0.75,       # 随机选择80%特征建立决策树
 	                      objective='multi:softmax', # 指定损失函数
 	                      num_class=4,
-	                      # scale_pos_weight=1,        # 解决样本个数不平衡的问题
-	                      random_state=50            # 随机数
+	                      scale_pos_weight=1,        # 解决样本个数不平衡的问题
+	                      random_state=50,            # 随机数
+	                      #alpha=10.0,
+	                      #lambda=1.0
 	                     )
 
 	cur_model = xgbc
