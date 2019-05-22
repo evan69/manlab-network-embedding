@@ -19,7 +19,7 @@ emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
 # emb_path = '../data/facebook_deepwalk_default.emb'
 
 
-predict_path = '../result/try.csv'
+predict_path = '../result/facebook_5.22_try.csv'
 
 vertices = set()
 test_edges = set()
@@ -227,19 +227,22 @@ if __name__ == '__main__':
     if not local_test:
         conj_mtrx = read()  # 用于输出最后的预测结果
         print('online test data read')
+    elif need_training:
+        conj_mtrx = read4local_test(test_num)  # 用于本地调试
+        print('local test data read')
     v_num, emb_dim, emb = load_emb(emb_path)
     print('embedding info: node_num =', v_num, ' embedding_dim =', emb_dim)
 
     # 【训练分类器模型】
-    if local_test and need_training:
-        conj_mtrx = read4local_test(test_num)  # 用于本地调试
-        print('local test data read')
+    if need_training:
+
         print('len(train_edges) =', len(train_edges))
         print('len(test_edges) =', len(test_edges))
         print('start training the model...')
 
-        model = LogisticRegression()
+        # model = LogisticRegression()
         # model = BayesianRidge()
+        model = SVC()
 
         sample_num = 40000
         ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 2)
@@ -259,6 +262,7 @@ if __name__ == '__main__':
         model.fit(Xs, ys)
         print('model trained')
 
+        # score_func = model.predict
         score_func = model.decision_function
     else:
         score_func = return_itself
@@ -301,7 +305,8 @@ if __name__ == '__main__':
 
         testlist = test_edges
         # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
-        test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+        # test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+        test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in testlist])
 
         predict_all(predict_path, score_func, test_Xs, testlist)
 
