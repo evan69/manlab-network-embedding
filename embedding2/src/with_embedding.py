@@ -3,13 +3,15 @@ from scipy.sparse import lil_matrix
 import random
 import threading
 import datetime
-from sklearn.svm import SVC
+import xgboost as xgb
+from sklearn.svm import SVC, SVR
 from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge
+from sklearn.model_selection import GridSearchCV
 
 
 local_test = True   # 本地调试
 need_training = True   # 需要训练机器学习模型
-test_num = 10000
+test_num = 5000
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
 # emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
@@ -19,7 +21,7 @@ emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
 # emb_path = '../data/facebook_deepwalk_default.emb'
 
 
-predict_path = '../result/facebook_5.22_try.csv'
+predict_path = '../result/facebook_5.22_node2vec_xgboost.csv'
 
 vertices = set()
 test_edges = set()
@@ -240,14 +242,17 @@ if __name__ == '__main__':
         print('len(test_edges) =', len(test_edges))
         print('start training the model...')
 
+        cv_params = {'n_estimators': [400, 500, 600, 700, 800]}
+        other_params = {'learning_rate': 0.1, 'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 1, 'seed': 0,
+                        'subsample': 0.8, 'colsample_bytree': 0.8, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1}
         # model = LogisticRegression()
         # model = BayesianRidge()
-        model = SVC()
+        # model = SVR()
+        model = xgb.XGBRegressor(**other_params)
 
-        sample_num = 40000
+
+        sample_num = 10000
         ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 2)
-        # xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
-        #       [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
         xsl = [np.multiply(emb[p[0]], emb[p[1]]) for p in ps] + [np.multiply(emb[n[0]], emb[n[1]]) for n in ns]
         Xs = np.array(xsl)
         print("Xs.shape:", Xs.shape)
@@ -259,11 +264,16 @@ if __name__ == '__main__':
         Xs = Xs[rand_ind]
         ys = ys[rand_ind]
 
-        model.fit(Xs, ys)
+
+        # model.fit(Xs, ys)
+        optimized_GBM = GridSearchCV(estimator=model, param_grid=cv_params, scoring='roc_auc', cv=5, verbose=1, n_jobs=4)
+        optimized_GBM.fit(Xs, ys)
+
         print('model trained')
 
-        # score_func = model.predict
-        score_func = model.decision_function
+        score_func = model.predict
+        # score_func = model.decision_function
+
     else:
         score_func = return_itself
 
@@ -276,6 +286,11 @@ if __name__ == '__main__':
             #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
             test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in test_ps] +
                                [np.multiply(emb[n[0]], emb[n[1]]) for n in test_ns])
+
+            evalute_result = optimized_GBM.grid_scores_
+            print('每轮迭代运行结果:{0}'.format(evalute_result))
+            print('参数的最佳取值：{0}'.format(optimized_GBM.best_params_))
+            print('最佳模型得分:{0}'.format(optimized_GBM.best_score_))
 
             scores = score_func(test_Xs)
 
