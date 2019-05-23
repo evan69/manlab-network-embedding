@@ -7,21 +7,26 @@ import xgboost as xgb
 from sklearn.svm import SVC, SVR
 from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge
 from sklearn.model_selection import GridSearchCV
+from sklearn.neural_network import MLPRegressor
 
 
-local_test = True   # 本地调试
+local_test = True  # 本地调试
 need_training = True   # 需要训练机器学习模型
-test_num = 5000
+test_num = 10000
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
 # emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
-emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
+# emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
+# emb_path = '../data/facebook_node2vec_100_160_0.25_0.25_8_16_6.emb'
+emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_1_16_3.emb'
 # emb_path = '../data/facebook_node2vec_default.emb'
+# emb_path = '../data/facebook_deepwalk_paper.emb'
 # emb_path = '../data/facebook_deepwalk_20_160_4_5_3.emb'
 # emb_path = '../data/facebook_deepwalk_default.emb'
+# emb_path = '../data/facebook_sdne_default.emb'
 
 
-predict_path = '../result/facebook_5.22_node2vec_xgboost.csv'
+predict_path = '../result/facebook_5.23_node2vec_svm.csv'
 
 vertices = set()
 test_edges = set()
@@ -242,16 +247,19 @@ if __name__ == '__main__':
         print('len(test_edges) =', len(test_edges))
         print('start training the model...')
 
-        cv_params = {'n_estimators': [400, 500, 600, 700, 800]}
-        other_params = {'learning_rate': 0.1, 'n_estimators': 500, 'max_depth': 5, 'min_child_weight': 1, 'seed': 0,
-                        'subsample': 0.8, 'colsample_bytree': 0.8, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1}
+        # cv_params = {}
+        other_params = {'penalty':'l2', 'dual':True, 'C':0.25, 'tol': 0.01,
+                 'fit_intercept':True, 'intercept_scaling':1, 'class_weight':None,
+                 'random_state':None, 'solver':'liblinear', 'max_iter': 100,
+                 'multi_class':'warn', 'verbose':0, 'warm_start':False, 'n_jobs':None}
         # model = LogisticRegression()
         # model = BayesianRidge()
-        # model = SVR()
-        model = xgb.XGBRegressor(**other_params)
+        model = SVR()
+        # model = xgb.XGBRegressor()
+        # model = MLPRegressor((400, 400, 100), learning_rate='adaptive',)
 
 
-        sample_num = 10000
+        sample_num = 50000
         ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 2)
         xsl = [np.multiply(emb[p[0]], emb[p[1]]) for p in ps] + [np.multiply(emb[n[0]], emb[n[1]]) for n in ns]
         Xs = np.array(xsl)
@@ -265,9 +273,9 @@ if __name__ == '__main__':
         ys = ys[rand_ind]
 
 
-        # model.fit(Xs, ys)
-        optimized_GBM = GridSearchCV(estimator=model, param_grid=cv_params, scoring='roc_auc', cv=5, verbose=1, n_jobs=4)
-        optimized_GBM.fit(Xs, ys)
+        model.fit(Xs, ys)
+        # optimized_model = GridSearchCV(estimator=model, param_grid=cv_params, scoring='roc_auc', cv=5, verbose=1, n_jobs=4)
+        # optimized_model.fit(Xs, ys)
 
         print('model trained')
 
@@ -287,10 +295,10 @@ if __name__ == '__main__':
             test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in test_ps] +
                                [np.multiply(emb[n[0]], emb[n[1]]) for n in test_ns])
 
-            evalute_result = optimized_GBM.grid_scores_
-            print('每轮迭代运行结果:{0}'.format(evalute_result))
-            print('参数的最佳取值：{0}'.format(optimized_GBM.best_params_))
-            print('最佳模型得分:{0}'.format(optimized_GBM.best_score_))
+            # evaluate_result = optimized_model.cv_results_
+            # print('每轮迭代运行结果:{0}'.format(evaluate_result))
+            # print('参数的最佳取值：{0}'.format(optimized_model.best_params_))
+            # print('最佳模型得分:{0}'.format(optimized_model.best_score_))
 
             scores = score_func(test_Xs)
 
@@ -320,8 +328,9 @@ if __name__ == '__main__':
 
         testlist = test_edges
         # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
-        # test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
-        test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in testlist])
+
+        test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
+        # test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in testlist])
 
         predict_all(predict_path, score_func, test_Xs, testlist)
 
