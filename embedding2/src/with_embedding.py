@@ -16,9 +16,9 @@ test_num = 10000
 train_path = '../data/facebook_edgelist'
 test_path = '../data/facebook_test'
 # emb_path = '../data/facebook_node2vec_20_160_0.25_4_4_5_3.emb'
-# emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
+emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_8_5_6.emb'
 # emb_path = '../data/facebook_node2vec_100_160_0.25_0.25_8_16_6.emb'
-emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_1_16_3.emb'
+# emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_1_16_3.emb'
 # emb_path = '../data/facebook_node2vec_default.emb'
 # emb_path = '../data/facebook_deepwalk_paper.emb'
 # emb_path = '../data/facebook_deepwalk_20_160_4_5_3.emb'
@@ -26,7 +26,7 @@ emb_path = '../data/facebook_node2vec_100_80_0.25_0.25_1_16_3.emb'
 # emb_path = '../data/facebook_sdne_default.emb'
 
 
-predict_path = '../result/facebook_5.23_node2vec_svm.csv'
+predict_path = '../result/facebook_5.24_node2vec_mlp.csv'
 
 vertices = set()
 test_edges = set()
@@ -247,21 +247,48 @@ if __name__ == '__main__':
         print('len(test_edges) =', len(test_edges))
         print('start training the model...')
 
-        # cv_params = {}
-        other_params = {'penalty':'l2', 'dual':True, 'C':0.25, 'tol': 0.01,
-                 'fit_intercept':True, 'intercept_scaling':1, 'class_weight':None,
-                 'random_state':None, 'solver':'liblinear', 'max_iter': 100,
-                 'multi_class':'warn', 'verbose':0, 'warm_start':False, 'n_jobs':None}
-        # model = LogisticRegression()
+        # cv_params = {'hidden_layer_sizes': [(800, 800, 200), (400, 400, 400, 100), (800, 800, 400, 100)]}
+        other_params = {
+                'hidden_layer_sizes':(400, 400, 200),
+                'activation':'relu',
+                'solver':'adam', 
+                'alpha':0.0001,
+                'batch_size':'auto', 
+                'learning_rate':'adaptive', 
+                'learning_rate_init':0.001, 
+                'power_t':0.5,
+                'max_iter':300, 
+                'shuffle':True, 
+                'random_state':None, 
+                'tol':0.0001, 
+                'verbose':False, 
+                'warm_start':False, 
+                'momentum':0.9, 
+                'nesterovs_momentum':True, 
+                'early_stopping':False, 
+                'validation_fraction':0.1, 
+                'beta_1':0.9, 
+                'beta_2':0.999, 
+                'epsilon':1e-08, 
+                'n_iter_no_change':10
+                }
+        # other_params = {'penalty':'l2', 'dual':True, 'C':0.25, 'tol': 0.01,
+        #         'fit_intercept':True, 'intercept_scaling':1, 'class_weight':None,
+        #         'random_state':None, 'solver':'liblinear', 'max_iter': 100,
+        #         'multi_class':'warn', 'verbose':0, 'warm_start':Fal
+        
         # model = BayesianRidge()
-        model = SVR()
+        # model = SVR()
         # model = xgb.XGBRegressor()
-        # model = MLPRegressor((400, 400, 100), learning_rate='adaptive',)
+        model = MLPRegressor(**other_params)
 
 
-        sample_num = 50000
-        ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 2)
-        xsl = [np.multiply(emb[p[0]], emb[p[1]]) for p in ps] + [np.multiply(emb[n[0]], emb[n[1]]) for n in ns]
+        sample_num = 540424
+        ps, ns = provide_sample(conj=conj_mtrx, pstv_set=train_edges, ngtv_num=sample_num // 4)
+        xsl = [np.concatenate([emb[p[0]], emb[p[1]]]) for p in ps] + [np.concatenate([emb[p[1]], emb[p[0]]]) for p in ps] +\
+              [np.concatenate([emb[n[0]], emb[n[1]]]) for n in ns] + [np.concatenate([emb[n[1]], emb[n[0]]]) for n in ns]
+        
+        # xsl = [np.multiply(emb[p[0]], emb[p[1]]) for p in ps] + [np.multiply(emb[n[0]], emb[n[1]]) for n in ns]
         Xs = np.array(xsl)
         print("Xs.shape:", Xs.shape)
 
@@ -278,6 +305,8 @@ if __name__ == '__main__':
         # optimized_model.fit(Xs, ys)
 
         print('model trained')
+        from sklearn.externals import joblib
+        joblib.dump(model, "mlpregressor3.pkl")
 
         score_func = model.predict
         # score_func = model.decision_function
@@ -290,10 +319,10 @@ if __name__ == '__main__':
         if need_training:
             test_ps, test_ns = provide_sample(conj_mtrx, pstv_set=test_edges, ngtv_num=test_num // 2)
             testlist = test_ps + test_ns
-            # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
-            #                    [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
-            test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in test_ps] +
-                               [np.multiply(emb[n[0]], emb[n[1]]) for n in test_ns])
+            test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in test_ps] +
+                               [np.concatenate([emb[n[0]], emb[n[1]]]) for n in test_ns])
+            # test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in test_ps] +
+            #                    [np.multiply(emb[n[0]], emb[n[1]]) for n in test_ns])
 
             # evaluate_result = optimized_model.cv_results_
             # print('每轮迭代运行结果:{0}'.format(evaluate_result))
@@ -328,9 +357,9 @@ if __name__ == '__main__':
 
         testlist = test_edges
         # test_Xs = np.array([np.concatenate([emb[p[0]], emb[p[1]]]) for p in testlist])
-
-        test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
-        # test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in testlist])
-
+        if need_training:
+            test_Xs = np.array([np.multiply(emb[p[0]], emb[p[1]]) for p in testlist])
+        else:
+            test_Xs = np.array([np.inner(emb[p[0]], emb[p[1]]) for p in testlist])
         predict_all(predict_path, score_func, test_Xs, testlist)
 
