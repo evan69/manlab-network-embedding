@@ -1,5 +1,12 @@
 /manlab-network-embedding1/
+embedding1/data/*
 embedding2/data/*
+embedding2/result/*
+embedding2/.DS_Store
+embedding2/src/*.pkl
+embedding2/src/*.swp
+.DS_Store
+.idea/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
