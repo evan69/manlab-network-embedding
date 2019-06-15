@@ -12,11 +12,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import GradientBoostingClassifier
 from xgboost import XGBClassifier
+from sklearn.ensemble import VotingClassifier
+from sklearn.ensemble import BaggingClassifier
 
 import csv
 
 if __name__ == "__main__":
 	trainX, trainY, testId, testX = load_data.build_dataset("struc2vec.emb")
+	# trainX, trainY, testId, testX = load_data.build_dataset("airport_node2vec_100_80_0.25_0.25_8_5_3.emb")
+	# trainX, trainY, testId, testX = load_data.build_dataset("airport_deepwalk007.emb")
+	# trainX, trainY, testId, testX = load_data.build_dataset("airport_stru20_80_256.emb")
 	trainX = np.array(trainX)
 	trainY = np.array(trainY)
 	# testX = np.array(testX)
@@ -24,10 +29,15 @@ if __name__ == "__main__":
 	
 	# dt_model = DecisionTreeClassifier()
 	knn = KNeighborsClassifier(n_neighbors = 100)
-	dt_model = RandomForestClassifier(n_estimators=200, criterion='entropy', max_depth=5, random_state=0, class_weight='balanced')
-	lr_model= LogisticRegression(C = 0.3, penalty = 'l2')
+	dt_model = RandomForestClassifier(n_estimators=600, criterion='entropy', max_depth=6, random_state=50, class_weight='balanced')
+	lr_model= LogisticRegression(C = 0.01, penalty = 'l2')
 	svm_model = SVC()
-	mlp_model = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(8, 8, 8, 8, 8, 4), random_state=1)
+	mlp_model = MLPClassifier(# solver='lbfgs', 
+	                          alpha=1e-5, 
+	                          hidden_layer_sizes=(512, 512, 256), 
+	                          # learning_rate=1e-1,
+	                          random_state=1,
+	)
 	gbdt_model = GradientBoostingClassifier()
 	# xgbc = XGBClassifier()
 	xgbc = XGBClassifier(#booster="gbliner",
@@ -46,13 +56,15 @@ if __name__ == "__main__":
 	                      #alpha=10.0,
 	                      #lambda=1.0
 	                     )
+	voting_model = VotingClassifier(estimators=[("xgbc", xgbc), ("mlp", mlp_model), ("lr", lr_model)], voting="hard")
+	bag_clf = BaggingClassifier(lr_model, n_estimators=500, max_samples=100, bootstrap=True, n_jobs=-1 )
 
 	cur_model = xgbc
 
 	scores = cross_val_score(cur_model, trainX, trainY, cv = 10, scoring = 'accuracy')
 	print (scores)
 	print (sum(scores) / 10.0)
-
+	# assert False
 	cur_model.fit(trainX, trainY)
 	testY = cur_model.predict(testX)
 	print (testY)
